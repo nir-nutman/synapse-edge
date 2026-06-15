@@ -1,0 +1,16 @@
+[package]
+name = "synapse-edge"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "*"
+tokio = { version = "*", features = ["full"] }
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+reqwest = { version = "*", features = ["json", "stream"] }
+tower-http = { version = "*", features = ["trace"] }
+tracing = "*"
+tracing-subscriber = "*"
+tracing-appender = "*"
+dotenvy = "*"
