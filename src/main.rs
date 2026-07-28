@@ -349,3 +349,111 @@ fn flatten_content(content: Option<&Value>) -> Option<String> {
         _ => None,
     }
 }
+
+#[cfg(test)] mod tests {
+    use super::*; // brings triage(), extract_prompt_text(), count_messages() into scope
+
+    #[test]
+    fn triage_accuracy_on_test_set() {
+        let data = std::fs::read_to_string("testdata/triage_prompts.jsonl").unwrap();
+        let mut correct = 0;
+        let mut total = 0;
+
+        for line in data.lines() {
+            let case: serde_json::Value = serde_json::from_str(line).unwrap();
+
+            // TODO: pull `messages` back out of `case` and build a payload
+            // shaped like { "messages": case["messages"] }, since that's
+            // what extract_prompt_text/count_messages expect.
+            
+            // TODO: call extract_prompt_text(&payload), count_messages(&payload),
+            // then triage(&prompt, message_count)
+            let prompt = extract_prompt_text(&case);
+            let message_count = count_messages(&case);
+            let decision = triage(&prompt, message_count);
+
+            // TODO: compare decision.prefer_local to case["expected_local"].as_bool().unwrap()
+            // increment `correct` if they match, print a mismatch line if not
+            let expected = case["expected_local"].as_bool().unwrap();
+            if decision.prefer_local == expected {
+                correct += 1;
+            } else {
+                println!(
+                    "MISMATCH id={} note={:?} expected={} got={} reason={:?}",
+                    case["id"], case["note"], expected, decision.prefer_local, decision.reason
+                );
+            }
+            total += 1;
+        }
+
+        println!("{correct}/{total} correct ({:.1}%)", 100.0 * correct as f64 / total as f64);
+    }
+
+    #[test]
+    fn triage_matches_human_expectation() {
+        let data = std::fs::read_to_string("testdata/triage_prompts.jsonl").unwrap();
+        let mut correct = 0;
+        let mut total = 0;
+        let mut divergences = 0;
+
+        for line in data.lines() {
+            let case: serde_json::Value = serde_json::from_str(line).unwrap();
+
+            let prompt = extract_prompt_text(&case);
+            let message_count = count_messages(&case);
+            let decision = triage(&prompt, message_count);
+
+            let expected_local = case["expected_local"].as_bool().unwrap();
+            let human_local = case["human_local"].as_bool().unwrap();
+            if expected_local != human_local {
+                divergences += 1;
+            }
+
+            if decision.prefer_local == human_local {
+                correct += 1;
+            } else {
+                println!(
+                    "MISMATCH id={} note={:?} human_local={} got={} reason={:?}",
+                    case["id"], case["note"], human_local, decision.prefer_local, decision.reason
+                );
+            }
+            total += 1;
+        }
+        println!(
+            "{correct}/{total} agree with human judgment ({:.1}%) — {divergences} designed divergences",
+            100.0 * correct as f64 / total as f64
+        );
+    }
+
+    #[test]
+    fn triage_cost_savings() {
+        let data = std::fs::read_to_string("testdata/triage_prompts.jsonl").unwrap(); 
+        const INPUT_PRICE_PER_TOKEN: f64 = 0.00000015;
+        const OUTPUT_PRICE_PER_TOKEN: f64 = 0.0000006;
+        let mut total_baseline_cost = 0.0;
+        let mut total_actual_cost = 0.0;
+        
+        for line in data.lines() {
+            let case: serde_json::Value = serde_json::from_str(line).unwrap();
+
+            let prompt = extract_prompt_text(&case);
+            let message_count = count_messages(&case);
+            let decision = triage(&prompt, message_count);
+
+            let word_count = prompt.split_whitespace().count();
+            let tokens = word_count as f64 * 1.3;
+            total_baseline_cost += tokens * INPUT_PRICE_PER_TOKEN + tokens * OUTPUT_PRICE_PER_TOKEN;
+           
+            if decision.prefer_local {
+                total_actual_cost += 0.0;
+            } else {
+                total_actual_cost += tokens * INPUT_PRICE_PER_TOKEN + tokens * OUTPUT_PRICE_PER_TOKEN;
+            }
+        }
+        let savings = (total_baseline_cost - total_actual_cost) / total_baseline_cost * 100.0;
+        println!(
+            "Baseline cost: {:.6}\nActual cost: {:.6}\nSavings: {:.1}%",
+            total_baseline_cost, total_actual_cost, savings
+        );
+    }
+}
