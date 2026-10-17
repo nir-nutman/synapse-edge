@@ -1,5 +1,5 @@
-use std::time::Instant;
 use serde_json::json;
+use std::time::Instant;
 
 #[tokio::main]
 async fn main() {
@@ -14,8 +14,8 @@ async fn main() {
     let mut cloud_latencies: Vec<u128> = Vec::new();
 
     for _ in 0..20 {
-        let body = json!({ "messages": 
-            [{"role": "user", "content": local_prompt}] 
+        let body = json!({ "messages":
+            [{"role": "user", "content": local_prompt}]
         });
         let start = Instant::now();
         let _response = client.post(proxy_url).json(&body).send().await.unwrap();
@@ -25,7 +25,7 @@ async fn main() {
     }
 
     for _ in 0..20 {
-        let body = json!({"messages": 
+        let body = json!({"messages":
             [{"role": "user", "content": cloud_prompt}]
         });
         let start = Instant::now();
@@ -46,7 +46,7 @@ async fn main() {
 
     cloud_latencies.sort();
     let p50_index = cloud_latencies.len() / 2;
-    let p95_index = (cloud_latencies.len() as f64 * 0.95) as usize; 
+    let p95_index = (cloud_latencies.len() as f64 * 0.95) as usize;
     let p95_index = p95_index.min(cloud_latencies.len() - 1);
 
     let local_p50 = cloud_latencies[p50_index];

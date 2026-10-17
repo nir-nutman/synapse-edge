@@ -7,7 +7,7 @@ use axum::http::{HeaderMap, Response, StatusCode};
 use serde_json::Value;
 use tracing::{error, info, warn};
 
-use crate::triage::{triage, count_messages, extract_prompt_text};
+use crate::triage::{count_messages, extract_prompt_text, triage};
 
 pub const OPENAI_CHAT_PATH: &str = "/v1/chat/completions";
 
@@ -37,9 +37,7 @@ pub async fn chat_completions(
                 let estimated_cost_saved_usd = 0.01_f64;
                 info!(
                     decision = "local",
-                    estimated_cost_saved_usd,
-                    latency_ms,
-                    "GreenOps telemetry"
+                    estimated_cost_saved_usd, latency_ms, "GreenOps telemetry"
                 );
                 return upstream_response(upstream);
             }
@@ -142,7 +140,8 @@ fn upstream_response(upstream: reqwest::Response) -> Response<Body> {
 
 fn copy_headers(from: &HeaderMap, to: &mut HeaderMap) {
     for (name, value) in from {
-        if name == HOST || name == CONTENT_LENGTH || name == CONNECTION || name == TRANSFER_ENCODING {
+        if name == HOST || name == CONTENT_LENGTH || name == CONNECTION || name == TRANSFER_ENCODING
+        {
             continue;
         }
         to.insert(name, value.clone());
@@ -152,8 +151,6 @@ fn copy_headers(from: &HeaderMap, to: &mut HeaderMap) {
 fn upstream_error_response(err: reqwest::Error) -> Response<Body> {
     let status = if err.is_timeout() {
         StatusCode::GATEWAY_TIMEOUT
-    } else if err.is_connect() {
-        StatusCode::BAD_GATEWAY
     } else {
         StatusCode::BAD_GATEWAY
     };
@@ -165,10 +162,9 @@ fn upstream_error_response(err: reqwest::Error) -> Response<Body> {
         }
     });
 
-    let response = Response::builder()
+    Response::builder()
         .status(status)
         .header("content-type", "application/json")
         .body(Body::from(message.to_string()))
-        .expect("Failed to build error response");
-    response
+        .expect("Failed to build error response")
 }

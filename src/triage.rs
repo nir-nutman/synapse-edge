@@ -1,15 +1,15 @@
 use serde_json::Value;
 
 /// Represents a decision the triage proxy makes
-/// Contains a reason attribute to explain why it 
-/// chose the local model or API model 
+/// Contains a reason attribute to explain why it
+/// chose the local model or API model
 pub struct TriageDecision {
     pub prefer_local: bool,
     pub reason: String,
 }
 
-/// Keywords to determine if a prompt is complex 
-/// and should be routed to the API model 
+/// Keywords to determine if a prompt is complex
+/// and should be routed to the API model
 const HARD_SIGNALS: [&str; 8] = [
     "explain",
     "write code",
@@ -22,9 +22,9 @@ const HARD_SIGNALS: [&str; 8] = [
 ];
 
 /// Takes a prompt (string) and message count (integer) as input
-/// Returns a TriageDecision: whether the local model is preferred 
+/// Returns a TriageDecision: whether the local model is preferred
 /// and the reason for choosing the model it chose (local or API)
-/// Chooses local model if word count <= 30 and message count <= 2 
+/// Chooses local model if word count <= 30 and message count <= 2
 /// and if there are no complex keywords (from HARD_SIGNALS array)
 pub fn triage(prompt: &str, message_count: usize) -> TriageDecision {
     let word_count = prompt.split_whitespace().count();
@@ -52,7 +52,7 @@ pub fn triage(prompt: &str, message_count: usize) -> TriageDecision {
     }
 }
 
-/// Reads messages from request payload, returns # of messages 
+/// Reads messages from request payload, returns # of messages
 /// Triage logic needs this number in it's calculation (<= 2 messages)
 pub fn count_messages(payload: &Value) -> usize {
     payload
@@ -63,7 +63,7 @@ pub fn count_messages(payload: &Value) -> usize {
 }
 
 /// Pulls out prompt from the payload
-/// We only need the user's messages because 
+/// We only need the user's messages because
 /// that determines whether the local model or API is used
 pub fn extract_prompt_text(payload: &Value) -> String {
     payload
@@ -111,8 +111,9 @@ fn flatten_content(content: Option<&Value>) -> Option<String> {
     }
 }
 
-#[cfg(test)] mod tests {
-    use super::*; 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
     #[test]
     fn triage_accuracy_on_test_set() {
@@ -139,7 +140,10 @@ fn flatten_content(content: Option<&Value>) -> Option<String> {
             total += 1;
         }
 
-        println!("{correct}/{total} correct ({:.1}%)", 100.0 * correct as f64 / total as f64);
+        println!(
+            "{correct}/{total} correct ({:.1}%)",
+            100.0 * correct as f64 / total as f64
+        );
     }
 
     #[test]
@@ -180,12 +184,12 @@ fn flatten_content(content: Option<&Value>) -> Option<String> {
 
     #[test]
     fn triage_cost_savings() {
-        let data = std::fs::read_to_string("testdata/triage_prompts.jsonl").unwrap(); 
+        let data = std::fs::read_to_string("testdata/triage_prompts.jsonl").unwrap();
         const INPUT_PRICE_PER_TOKEN: f64 = 0.00000015;
         const OUTPUT_PRICE_PER_TOKEN: f64 = 0.0000006;
         let mut total_baseline_cost = 0.0;
         let mut total_actual_cost = 0.0;
-        
+
         for line in data.lines() {
             let case: serde_json::Value = serde_json::from_str(line).unwrap();
 
@@ -196,11 +200,12 @@ fn flatten_content(content: Option<&Value>) -> Option<String> {
             let word_count = prompt.split_whitespace().count();
             let tokens = word_count as f64 * 1.3;
             total_baseline_cost += tokens * INPUT_PRICE_PER_TOKEN + tokens * OUTPUT_PRICE_PER_TOKEN;
-           
+
             if decision.prefer_local {
                 total_actual_cost += 0.0;
             } else {
-                total_actual_cost += tokens * INPUT_PRICE_PER_TOKEN + tokens * OUTPUT_PRICE_PER_TOKEN;
+                total_actual_cost +=
+                    tokens * INPUT_PRICE_PER_TOKEN + tokens * OUTPUT_PRICE_PER_TOKEN;
             }
         }
         let savings = (total_baseline_cost - total_actual_cost) / total_baseline_cost * 100.0;
