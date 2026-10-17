@@ -1,5 +1,5 @@
-mod triage;
 mod proxy;
+mod triage;
 
 use std::env;
 use std::net::SocketAddr;
@@ -9,8 +9,8 @@ use axum::Router;
 use dotenvy::dotenv;
 use reqwest::Client;
 use tokio::net::TcpListener;
-use tracing::Level;
 use tracing::info;
+use tracing::Level;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -35,7 +35,9 @@ async fn main() {
         .with_writer(file_writer);
 
     tracing_subscriber::registry()
-        .with(tracing_subscriber::filter::LevelFilter::from_level(Level::INFO))
+        .with(tracing_subscriber::filter::LevelFilter::from_level(
+            Level::INFO,
+        ))
         .with(stdout_layer)
         .with(file_layer)
         .init();
